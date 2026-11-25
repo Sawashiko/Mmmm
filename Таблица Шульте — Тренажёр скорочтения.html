@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Таблица Шульте — Тренажёр скорочтения</title>
+    <!-- Подключаем Tailwind CSS для адаптивной верстки -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Подключаем шрифт Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* Базовые стили и настройки предотвращения случайного выделения */
+        body {
+            font-family: 'Inter', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+            touch-action: manipulation;
+        }
+
+        /* Анимация правильного нажатия */
+        @keyframes pulseSuccess {
+            0% { transform: scale(1); }
+            50% { transform: scale(0.94); }
+            100% { transform: scale(1); }
+        }
+
+        /* Анимация ошибки (тряска и красная вспышка) */
+        @keyframes shakeError {
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-5px); background-color: #fee2e2; border-color: #ef4444; color: #b91c1c; }
+            40% { transform: translateX(5px); background-color: #fee2e2; border-color: #ef4444; color: #b91c1c; }
+            60% { transform: translateX(-4px); background-color: #fee2e2; border-color: #ef4444; color: #b91c1c; }
+            80% { transform: translateX(4px); }
+        }
+
+        .cell-correct-anim {
+            animation: pulseSuccess 0.22s ease-out;
+        }
+
+        .cell-error-anim {
+            animation: shakeError 0.35s ease-in-out;
+        }
+
+        /* Стилизация ячеек сетки */
+        .schulte-cell {
+            transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+            aspect-ratio: 1 / 1;
+        }
+
+        .schulte-cell:active {
+            transform: scale(0.95);
+        }
+
+        /* Кастомный скроллбар */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col items-center justify-between py-4 px-3 sm:py-6 sm:px-6">
+
+    <!-- Верхняя панель: заголовок и быстрые настройки -->
+    <header class="w-full max-w-lg flex flex-col gap-3">
+        <div class="flex items-center justify-between bg-white px-4 py-3 rounded-2xl shadow-sm border border-slate-200/80">
+            <div class="flex items-center gap-2.5">
+                <!-- Иконка сетки Шульте -->
+                <div class="w-9 h-9 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-sm shadow-sm">
+                    3×3
+                </div>
+                <div>
+                    <h1 class="text-base sm:text-lg font-bold leading-tight text-slate-900">Таблица Шульте</h1>
+                    <p class="text-xs text-slate-500">Тренажёр скорочтения</p>
+                </div>
+            </div>
+
+            <!-- Кнопки управления звуком и справкой -->
+            <div class="flex items-center gap-1.5">
+                <button id="soundToggleBtn" type="button" title="Включить/выключить звук"
+                    class="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400">
+                    <!-- Иконка звука (обновляется через JS) -->
+                    <svg id="soundIconOn" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
+                    </svg>
+                    <svg id="soundIconOff" class="w-5 h-5 hidden text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"/>
+                    </svg>
+                </button>
+
+                <button id="helpBtn" type="button" title="Как тренироваться"
+                    class="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Выбор размера сетки и переключатели режима -->
+        <div class="bg-white p-3 rounded-2xl shadow-sm border border-slate-200/80 flex flex-col gap-3">
+            <!-- Кнопки выбора размера -->
+            <div class="grid grid-cols-3 gap-1.5 bg-slate-100 p-1 rounded-xl" role="group" aria-label="Размер сетки">
+                <button type="button" data-size="3"
+                    class="size-btn py-2 px-3 rounded-lg text-sm font-semibold transition-all bg-white text-slate-900 shadow-sm">
+                    3×3 <span class="text-xs font-normal text-slate-500 hidden sm:inline">(1–9)</span>
+                </button>
+                <button type="button" data-size="4"
+                    class="size-btn py-2 px-3 rounded-lg text-sm font-semibold transition-all text-slate-600 hover:text-slate-900">
+                    4×4 <span class="text-xs font-normal text-slate-500 hidden sm:inline">(1–16)</span>
+                </button>
+                <button type="button" data-size="5"
+                    class="size-btn py-2 px-3 rounded-lg text-sm font-semibold transition-all text-slate-600 hover:text-slate-900">
+                    5×5 <span class="text-xs font-normal text-slate-500 hidden sm:inline">(1–25)</span>
+                </button>
+            </div>
+
+            <!-- Дополнительные переключатели: выделение центра и подсказка -->
+            <div class="flex flex-wrap items-center justify-between gap-2 px-1 text-xs sm:text-sm">
+                <label class="inline-flex items-center gap-2 cursor-pointer text-slate-700 font-medium">
+                    <input id="highlightCenterToggle" type="checkbox" checked
+                        class="w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900 accent-slate-900 cursor-pointer">
+                    <span>Выделять центр</span>
+                </label>
+
+                <label class="inline-flex items-center gap-2 cursor-pointer text-slate-700 font-medium">
+                    <input id="showHintToggle" type="checkbox" checked
+                        class="w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900 accent-slate-900 cursor-pointer">
+                    <span>Подсказка цифры</span>
+                </label>
+            </div>
+        </div>
+    </header>
+
+    <!-- Основная игровая зона -->
+    <main class="w-full max-w-lg my-auto py-3 flex flex-col items-center gap-4">
+        
+        <!-- Информационная панель: Секундомер, Следующая цифра, Рекорд -->
+        <div class="w-full grid grid-cols-3 gap-2 sm:gap-3">
+            <!-- Секундомер -->
+            <div class="bg-white px-3 py-2.5 rounded-2xl shadow-sm border border-slate-200/80 flex flex-col items-center justify-center">
+                <span class="text-[11px] uppercase tracking-wider font-semibold text-slate-400">Время</span>
+                <div id="timerDisplay" class="text-xl sm:text-2xl font-extrabold tabular-nums text-slate-900 mt-0.5">
+                    00.00<span class="text-xs font-semibold text-slate-400 ml-0.5">с</span>
+                </div>
+            </div>
+
+            <!-- Следующая цифра -->
+            <div class="bg-white px-3 py-2.5 rounded-2xl shadow-sm border border-slate-200/80 flex flex-col items-center justify-center">
+                <span class="text-[11px] uppercase tracking-wider font-semibold text-slate-400">Следующая</span>
+                <div id="nextNumberBox" class="text-xl sm:text-2xl font-extrabold tabular-nums text-indigo-600 mt-0.5">
+                    1
+                </div>
+            </div>
+
+            <!-- Личный рекорд -->
+            <div class="bg-white px-3 py-2.5 rounded-2xl shadow-sm border border-slate-200/80 flex flex-col items-center justify-center">
+                <span class="text-[11px] uppercase tracking-wider font-semibold text-slate-400">Рекорд</span>
+                <div id="bestRecordDisplay" class="text-xl sm:text-2xl font-extrabold tabular-nums text-emerald-600 mt-0.5">
+                    —
+                </div>
+            </div>
+        </div>
+
+        <!-- Контейнер таблицы Шульте -->
+        <div class="w-full bg-white p-3 sm:p-4 rounded-3xl shadow-md border border-slate-200/90 relative">
+            <!-- Сетка ячеек -->
+            <div id="schulteGrid" class="grid grid-cols-3 gap-2 sm:gap-2.5 w-full">
+                <!-- Ячейки генерируются динамически через JS -->
+            </div>
+        </div>
+
+        <!-- Кнопка перезапуска и статус -->
+        <div class="w-full flex items-center justify-between gap-3">
+            <div class="text-xs sm:text-sm text-slate-500 px-1" id="statusHintText">
+                Нажмите <strong class="text-slate-800">1</strong>, чтобы запустить таймер
+            </div>
+
+            <button id="shuffleBtn" type="button"
+                class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 active:bg-slate-950 text-white font-semibold text-sm shadow-sm transition-all cursor-pointer">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+                <span>Перемешать</span>
+            </button>
+        </div>
+    </main>
+
+    <!-- Подвал с краткой памяткой -->
+    <footer class="w-full max-w-lg text-center text-xs text-slate-400 pt-1">
+        Смотрите в центр таблицы и находите числа периферическим зрением
+    </footer>
+
+    <!-- Модальное окно результатов прохождения -->
+    <div id="resultModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
+        <div class="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-slate-100 text-center transform transition-all">
+            <div id="newRecordBadge" class="hidden inline-flex items-center gap-1 px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-bold mb-3">
+                🏆 Новый личный рекорд!
+            </div>
+            
+            <div class="w-14 h-14 mx-auto mb-3 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                </svg>
+            </div>
+
+            <h2 class="text-xl font-extrabold text-slate-900">Таблица пройдена!</h2>
+            <p class="text-sm text-slate-500 mt-1" id="resultGridSubtitle">Размер сетки: 3×3 (1–9)</p>
+
+            <!-- Карточки статистики -->
+            <div class="grid grid-cols-3 gap-2 my-5">
+                <div class="bg-slate-50 p-3 rounded-2xl border border-slate-200/70">
+                    <div class="text-[11px] font-semibold text-slate-400 uppercase">Время</div>
+                    <div id="finalTimeVal" class="text-lg font-extrabold text-slate-900 mt-0.5">00.00 с</div>
+                </div>
+                <div class="bg-slate-50 p-3 rounded-2xl border border-slate-200/70">
+                    <div class="text-[11px] font-semibold text-slate-400 uppercase">Ошибки</div>
+                    <div id="finalErrorsVal" class="text-lg font-extrabold text-slate-900 mt-0.5">0</div>
+                </div>
+                <div class="bg-slate-50 p-3 rounded-2xl border border-slate-200/70">
+                    <div class="text-[11px] font-semibold text-slate-400 uppercase">Рекорд</div>
+                    <div id="finalBestVal" class="text-lg font-extrabold text-emerald-600 mt-0.5">00.00 с</div>
+                </div>
+            </div>
+
+            <button id="playAgainBtn" type="button"
+                class="w-full py-3.5 px-5 rounded-2xl bg-slate-900 hover:bg-slate-800 active:scale-[0.99] text-white font-bold text-base shadow-md transition-all cursor-pointer">
+                Играть снова
+            </button>
+        </div>
+    </div>
+
+    <!-- Модальное окно инструкции -->
+    <div id="helpModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
+        <div class="bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl border border-slate-100 text-left">
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="text-lg font-extrabold text-slate-900">Как тренироваться по таблице Шульте?</h2>
+                <button id="closeHelpBtn" type="button" class="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <ul class="space-y-2.5 text-sm text-slate-600 leading-relaxed">
+                <li class="flex items-start gap-2.5">
+                    <span class="w-5 h-5 rounded-full bg-slate-900 text-white text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">1</span>
+                    <span>Сфокусируйте взгляд строго на <strong>чёрной центральной ячейке</strong> и старайтесь не переводить глаза на края таблицы.</span>
+                </li>
+                <li class="flex items-start gap-2.5">
+                    <span class="w-5 h-5 rounded-full bg-slate-900 text-white text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">2</span>
+                    <span>Находите и нажимайте числа строго по возрастанию: <strong>1, 2, 3...</strong> используя периферическое (боковое) зрение.</span>
+                </li>
+                <li class="flex items-start gap-2.5">
+                    <span class="w-5 h-5 rounded-full bg-slate-900 text-white text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">3</span>
+                    <span>Секундомер запускается автоматически при нажатии на цифру <strong>1</strong> и останавливается на последнем числе.</span>
+                </li>
+            </ul>
+            <button id="gotItHelpBtn" type="button"
+                class="w-full mt-5 py-3 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-sm transition-colors cursor-pointer">
+                Понятно, начать тренировку
+            </button>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * Логика веб-игры «Таблица Шульте»
+         * Включает генерацию сеток 3x3, 4x4, 5x5, высокоточный секундомер,
+         * синтезатор звуков Web Audio API и сохранение рекордов в localStorage.
+         */
+        document.addEventListener('DOMContentLoaded', () => {
+            // Состояние игры
+            const state = {
+                gridSize: 3,                 // 3, 4 или 5
+                numbers: [],                 // Текущий перемешанный массив чисел
+                nextExpected: 1,             // Следующее ожидаемое число
+                errorsCount: 0,              // Количество ошибок за раунд
+                isRunning: false,            // Идёт ли отсчёт секундомера
+                isFinished: false,           // Завершён ли раунд
+                startTime: 0,                // Время старта (performance.now())
+                elapsedMs: 0,                // Прошедшее время в мс
+                timerFrameId: null,          // ID requestAnimationFrame
+                highlightCenter: true,       // Выделять центральную ячейку чёрным
+                showHint: true,              // Показывать следующую цифру
+                soundEnabled: true,          // Включены ли звуковые эффекты
+                audioCtx: null               // Контекст Web Audio API
+            };
+
+            // Ключ для хранения рекордов в localStorage
+            const STORAGE_KEY = 'schulte_table_records_v1';
+
+            // Элементы DOM
+            const schulteGrid = document.getElementById('schulteGrid');
+            const timerDisplay = document.getElementById('timerDisplay');
+            const nextNumberBox = document.getElementById('nextNumberBox');
+            const bestRecordDisplay = document.getElementById('bestRecordDisplay');
+            const statusHintText = document.getElementById('statusHintText');
+            const shuffleBtn = document.getElementById('shuffleBtn');
+            const sizeBtns = document.querySelectorAll('.size-btn');
+            const highlightCenterToggle = document.getElementById('highlightCenterToggle');
+            const showHintToggle = document.getElementById('showHintToggle');
+            const soundToggleBtn = document.getElementById('soundToggleBtn');
+            const soundIconOn = document.getElementById('soundIconOn');
+            const soundIconOff = document.getElementById('soundIconOff');
+
+            // Элементы модальных окон
+            const resultModal = document.getElementById('resultModal');
+            const newRecordBadge = document.getElementById('newRecordBadge');
+            const resultGridSubtitle = document.getElementById('resultGridSubtitle');
+            const finalTimeVal = document.getElementById('finalTimeVal');
+            const finalErrorsVal = document.getElementById('finalErrorsVal');
+            const finalBestVal = document.getElementById('finalBestVal');
+            const playAgainBtn = document.getElementById('playAgainBtn');
+
+            const helpBtn = document.getElementById('helpBtn');
+            const helpModal = document.getElementById('helpModal');
+            const closeHelpBtn = document.getElementById('closeHelpBtn');
+            const gotItHelpBtn = document.getElementById('gotItHelpBtn');
+
+            /**
+             * Инициализация или получение AudioContext по требованию пользователя
+             */
+            function getAudioContext() {
+                if (!state.audioCtx) {
+                    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                    if (AudioContextClass) {
+                        state.audioCtx = new AudioContextClass();
+                    }
+                }
+                if (state.audioCtx && state.audioCtx.state === 'suspended') {
+                    state.audioCtx.resume();
+                }
+                return state.audioCtx;
+            }
+
+            /**
+             * Синтез звуковых эффектов (правильное нажатие, ошибка, победа)
+             */
+            function playSound(type) {
+                if (!state.soundEnabled) return;
+                try {
+                    const ctx = getAudioContext();
+                    if (!ctx) return;
+
+                    const now = ctx.currentTime;
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+
+                    if (type === 'correct') {
+                        // Лёгкий приятный щелчок с небольшим повышением тона по мере прогресса
+                        const progressRatio = state.nextExpected / (state.gridSize * state.gridSize);
+                        const baseFreq = 440 + progressRatio * 220;
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(baseFreq, now);
+                        osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.25, now + 0.08);
+
+                        gain.gain.setValueAtTime(0.14, now);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+
+                        osc.start(now);
+                        osc.stop(now + 0.095);
+                    } else if (type === 'error') {
+                        // Мягкий низкий тон ошибки
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(170, now);
+                        osc.frequency.linearRampToValueAtTime(130, now + 0.16);
+
+                        gain.gain.setValueAtTime(0.18, now);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+
+                        osc.start(now);
+                        osc.stop(now + 0.19);
+                    } else if (type === 'win') {
+                        // Короткий победный аккорд (три ноты подряд)
+                        const notes = [523.25, 659.25, 783.99]; // До, Ми, Соль
+                        notes.forEach((freq, idx) => {
+                            const noteOsc = ctx.createOscillator();
+                            const noteGain = ctx.createGain();
+                            noteOsc.connect(noteGain);
+                            noteGain.connect(ctx.destination);
+
+                            const startT = now + idx * 0.08;
+                            noteOsc.type = 'sine';
+                            noteOsc.frequency.setValueAtTime(freq, startT);
+
+                            noteGain.gain.setValueAtTime(0.15, startT);
+                            noteGain.gain.exponentialRampToValueAtTime(0.001, startT + 0.28);
+
+                            noteOsc.start(startT);
+                            noteOsc.stop(startT + 0.3);
+                        });
+                    }
+                } catch (e) {
+                    // Игнорируем ошибки аудио на старых устройствах
+                }
+            }
+
+            /**
+             * Перемешивание массива алгоритмом Фишера — Йетса
+             */
+            function shuffleArray(array) {
+                const arr = [...array];
+                for (let i = arr.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [arr[i], arr[j]] = [arr[j], arr[i]];
+                }
+                return arr;
+            }
+
+            /**
+             * Получение личных рекордов из localStorage
+             */
+            function getRecords() {
+                try {
+                    const raw = localStorage.getItem(STORAGE_KEY);
+                    return raw ? JSON.parse(raw) : {};
+                } catch (e) {
+                    return {};
+                }
+            }
+
+            /**
+             * Сохранение нового рекорда для текущего размера сетки
+             */
+            function saveRecordIfBest(size, timeMs) {
+                try {
+                    const records = getRecords();
+                    const key = `size_${size}`;
+                    const prevBest = records[key];
+                    if (!prevBest || timeMs < prevBest) {
+                        records[key] = timeMs;
+                        localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+                        return true; // Новый рекорд установлен
+                    }
+                    return false;
+                } catch (e) {
+                    return false;
+                }
+            }
+
+            /**
+             * Форматирование времени в секунды и сотые доли (например, 04.28)
+             */
+            function formatTime(ms) {
+                const totalSeconds = ms / 1000;
+                if (totalSeconds < 10) {
+                    return '0' + totalSeconds.toFixed(2);
+                }
+                return totalSeconds.toFixed(2);
+            }
+
+            /**
+             * Обновление отображения рекорда в верхней панели
+             */
+            function updateBestRecordUI() {
+                const records = getRecords();
+                const bestMs = records[`size_${state.gridSize}`];
+                if (bestMs) {
+                    bestRecordDisplay.innerHTML = `${formatTime(bestMs)}<span class="text-xs font-semibold text-emerald-500 ml-0.5">с</span>`;
+                } else {
+                    bestRecordDisplay.textContent = '—';
+                }
+            }
+
+            /**
+             * Обновление блока подсказки следующей цифры
+             */
+            function updateNextHintUI() {
+                if (!state.showHint) {
+                    nextNumberBox.innerHTML = '<span class="text-slate-300 text-lg">•••</span>';
+                } else {
+                    const maxNum = state.gridSize * state.gridSize;
+                    if (state.nextExpected > maxNum) {
+                        nextNumberBox.textContent = '✓';
+                    } else {
+                        nextNumberBox.textContent = state.nextExpected;
+                    }
+                }
+            }
+
+            /**
+             * Цикл обновления секундомера
+             */
+            function updateTimerLoop() {
+                if (!state.isRunning) return;
+                state.elapsedMs = performance.now() - state.startTime;
+                timerDisplay.innerHTML = `${formatTime(state.elapsedMs)}<span class="text-xs font-semibold text-slate-400 ml-0.5">с</span>`;
+                state.timerFrameId = requestAnimationFrame(updateTimerLoop);
+            }
+
+            /**
+             * Запуск секундомера
+             */
+            function startTimer() {
+                if (state.isRunning) return;
+                state.isRunning = true;
+                state.startTime = performance.now();
+                state.timerFrameId = requestAnimationFrame(updateTimerLoop);
+                statusHintText.innerHTML = 'Ищите числа по порядку: <strong class="text-slate-800">1 → ' + (state.gridSize * state.gridSize) + '</strong>';
+            }
+
+            /**
+             * Остановка секундомера
+             */
+            function stopTimer() {
+                state.isRunning = false;
+                if (state.timerFrameId) {
+                    cancelAnimationFrame(state.timerFrameId);
+                    state.timerFrameId = null;
+                }
+                timerDisplay.innerHTML = `${formatTime(state.elapsedMs)}<span class="text-xs font-semibold text-slate-400 ml-0.5">с</span>`;
+            }
+
+            /**
+             * Определение индекса центральной ячейки (или центральных ячеек для 4x4)
+             */
+            function isCenterCell(index, size) {
+                if (size === 3) {
+                    return index === 4; // Центр 3x3
+                }
+                if (size === 5) {
+                    return index === 12; // Центр 5x5
+                }
+                if (size === 4) {
+                    // В сетке 4x4 центральный блок 2x2 (индексы 5, 6, 9, 10)
+                    return index === 5 || index === 6 || index === 9 || index === 10;
+                }
+                return false;
+            }
+
+            /**
+             * Отрисовка сетки Шульте
+             */
+            function renderGrid() {
+                const size = state.gridSize;
+                schulteGrid.innerHTML = '';
+
+                // Настраиваем количество колонок сетки через Tailwind
+                schulteGrid.className = `grid gap-2 sm:gap-2.5 w-full grid-cols-${size}`;
+
+                // Размер шрифта в зависимости от размера сетки
+                let fontSizeClass = 'text-3xl sm:text-4xl';
+                if (size === 4) fontSizeClass = 'text-2xl sm:text-3xl';
+                if (size === 5) fontSizeClass = 'text-xl sm:text-2xl';
+
+                state.numbers.forEach((num, idx) => {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.dataset.number = num;
+                    btn.dataset.index = idx;
+                    btn.textContent = num;
+
+                    const isCenter = state.highlightCenter && isCenterCell(idx, size);
+                    const isAlreadyFound = num < state.nextExpected;
+
+                    // Базовые классы ячейки
+                    let baseClasses = `schulte-cell rounded-2xl border-2 font-extrabold flex items-center justify-center cursor-pointer focus:outline-none ${fontSizeClass}`;
+
+                    if (isAlreadyFound) {
+                        // Стиль уже найденной цифры
+                        if (isCenter) {
+                            baseClasses += ' bg-slate-800 border-slate-800 text-emerald-400 opacity-85';
+                        } else {
+                            baseClasses += ' bg-emerald-50 border-emerald-200 text-emerald-600';
+                        }
+                    } else if (isCenter) {
+                        // Центральная ячейка фиксации взгляда (как на фото)
+                        baseClasses += ' bg-slate-900 border-slate-900 text-white shadow-sm hover:bg-slate-800';
+                    } else {
+                        // Обычная светлая ячейка с чётким контрастным шрифтом
+                        baseClasses += ' bg-white border-slate-200 text-slate-900 hover:border-slate-300 hover:bg-slate-50 shadow-2xs';
+                    }
+
+                    btn.className = baseClasses;
+                    btn.addEventListener('click', () => handleCellClick(btn, num, idx));
+                    schulteGrid.appendChild(btn);
+                });
+            }
+
+            /**
+             * Обработка нажатия на ячейку
+             */
+            function handleCellClick(cellElement, number, index) {
+                if (state.isFinished) return;
+
+                const maxNumber = state.gridSize * state.gridSize;
+
+                // Если нажата правильная следующая цифра
+                if (number === state.nextExpected) {
+                    // Автоматический старт таймера на цифре 1
+                    if (number === 1 && !state.isRunning) {
+                        startTimer();
+                    }
+
+                    playSound('correct');
+
+                    // Визуальное обновление нажатой ячейки
+                    const isCenter = state.highlightCenter && isCenterCell(index, state.gridSize);
+                    cellElement.classList.remove('cell-error-anim', 'cell-correct-anim');
+                    void cellElement.offsetWidth; // Перезапуск CSS-анимации
+                    cellElement.classList.add('cell-correct-anim');
+
+                    if (isCenter) {
+                        cellElement.className = cellElement.className
+                            .replace('bg-slate-900', 'bg-slate-800')
+                            .replace('text-white', 'text-emerald-400');
+                    } else {
+                        cellElement.className = cellElement.className
+                            .replace('bg-white', 'bg-emerald-50')
+                            .replace('border-slate-200', 'border-emerald-200')
+                            .replace('text-slate-900', 'text-emerald-600')
+                            .replace('hover:bg-slate-50', '');
+                    }
+
+                    state.nextExpected++;
+                    updateNextHintUI();
+
+                    // Проверка завершения раунда
+                    if (state.nextExpected > maxNumber) {
+                        finishGame();
+                    }
+                } else {
+                    // Игнорируем повторное нажатие на уже пройденные числа (не считаем за ошибку, если случайно задели)
+                    if (number < state.nextExpected) {
+                        return;
+                    }
+
+                    // Ошибочное нажатие на число больше ожидаемого
+                    playSound('error');
+                    if (state.isRunning) {
+                        state.errorsCount++;
+                    }
+
+                    cellElement.classList.remove('cell-error-anim');
+                    void cellElement.offsetWidth;
+                    cellElement.classList.add('cell-error-anim');
+                }
+            }
+
+            /**
+             * Завершение раунда и показ окна результатов
+             */
+            function finishGame() {
+                state.isFinished = true;
+                stopTimer();
+                playSound('win');
+
+                const isNewRecord = saveRecordIfBest(state.gridSize, state.elapsedMs);
+                updateBestRecordUI();
+
+                const records = getRecords();
+                const bestMs = records[`size_${state.gridSize}`] || state.elapsedMs;
+                const maxNum = state.gridSize * state.gridSize;
+
+                // Заполняем данные модального окна
+                resultGridSubtitle.textContent = `Размер сетки: ${state.gridSize}×${state.gridSize} (1–${maxNum})`;
+                finalTimeVal.textContent = `${formatTime(state.elapsedMs)} с`;
+                finalErrorsVal.textContent = state.errorsCount;
+                finalBestVal.textContent = `${formatTime(bestMs)} с`;
+
+                if (isNewRecord) {
+                    newRecordBadge.classList.remove('hidden');
+                } else {
+                    newRecordBadge.classList.add('hidden');
+                }
+
+                // Небольшая задержка перед показом окна, чтобы игрок увидел финальный клик
+                setTimeout(() => {
+                    resultModal.classList.remove('hidden');
+                    resultModal.classList.add('flex');
+                }, 220);
+            }
+
+            /**
+             * Сброс и генерация новой таблицы
+             */
+            function initGame() {
+                stopTimer();
+                state.nextExpected = 1;
+                state.errorsCount = 0;
+                state.isRunning = false;
+                state.isFinished = false;
+                state.elapsedMs = 0;
+
+                // Генерируем массив от 1 до N^2 и перемешиваем
+                const totalCells = state.gridSize * state.gridSize;
+                const rawNumbers = Array.from({ length: totalCells }, (_, i) => i + 1);
+                state.numbers = shuffleArray(rawNumbers);
+
+                // Сброс интерфейса
+                timerDisplay.innerHTML = `00.00<span class="text-xs font-semibold text-slate-400 ml-0.5">с</span>`;
+                statusHintText.innerHTML = 'Нажмите <strong class="text-slate-800">1</strong>, чтобы запустить таймер';
+                updateNextHintUI();
+                updateBestRecordUI();
+                renderGrid();
+            }
+
+            // --- Обработчики событий UI ---
+
+            // Переключение размера сетки (3x3, 4x4, 5x5)
+            sizeBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const newSize = parseInt(btn.dataset.size, 10);
+                    if (newSize === state.gridSize) return;
+
+                    state.gridSize = newSize;
+
+                    // Обновляем активную вкладку
+                    sizeBtns.forEach(b => {
+                        b.classList.remove('bg-white', 'text-slate-900', 'shadow-sm');
+                        b.classList.add('text-slate-600');
+                    });
+                    btn.classList.add('bg-white', 'text-slate-900', 'shadow-sm');
+                    btn.classList.remove('text-slate-600');
+
+                    initGame();
+                });
+            });
+
+            // Переключатель «Выделять центр»
+            highlightCenterToggle.addEventListener('change', (e) => {
+                state.highlightCenter = e.target.checked;
+                renderGrid();
+            });
+
+            // Переключатель «Подсказка цифры»
+            showHintToggle.addEventListener('change', (e) => {
+                state.showHint = e.target.checked;
+                updateNextHintUI();
+            });
+
+            // Переключатель звука
+            soundToggleBtn.addEventListener('click', () => {
+                state.soundEnabled = !state.soundEnabled;
+                if (state.soundEnabled) {
+                    soundIconOn.classList.remove('hidden');
+                    soundIconOff.classList.add('hidden');
+                    playSound('correct');
+                } else {
+                    soundIconOn.classList.add('hidden');
+                    soundIconOff.classList.remove('hidden');
+                }
+            });
+
+            // Кнопка «Перемешать»
+            shuffleBtn.addEventListener('click', () => {
+                initGame();
+            });
+
+            // Кнопка «Играть снова» в окне результата
+            playAgainBtn.addEventListener('click', () => {
+                resultModal.classList.add('hidden');
+                resultModal.classList.remove('flex');
+                initGame();
+            });
+
+            // Модальное окно справки
+            helpBtn.addEventListener('click', () => {
+                helpModal.classList.remove('hidden');
+                helpModal.classList.add('flex');
+            });
+
+            const closeHelp = () => {
+                helpModal.classList.add('hidden');
+                helpModal.classList.remove('flex');
+            };
+
+            closeHelpBtn.addEventListener('click', closeHelp);
+            gotItHelpBtn.addEventListener('click', closeHelp);
+            helpModal.addEventListener('click', (e) => {
+                if (e.target === helpModal) closeHelp();
+            });
+
+            // Первый запуск игры при загрузке
+            initGame();
+        });
+    </script>
+</body>
+</html>
